@@ -4,8 +4,8 @@ The repository design pattern that has following characteristics
 
 * Easy to register new repositories with minimal repetitive code
 * Single database connection (aws session) across all repositories
-* Parent struct that contains shared field
-* Each repository must implement standard Restful methods, put can contain any additional functions
+* Parent struct that contains shared fields
+* Each repository must implement standard Restful methods, however can contain any additional functions
 * All repositories are stored in a registry and can be passed down the application as a single struct
 
 Example:
