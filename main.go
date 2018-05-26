@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/b-b3rn4rd/repository-design-pattern/repository"
 	"github.com/guregu/dynamo"
@@ -9,11 +10,22 @@ import (
 )
 
 func main() {
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
 	rr := repository.NewRepositoryRegistry(
-		dynamo.New(session.New(), &aws.Config{Region: aws.String("us-west-2")}),
-		logrus.New(),
+		dynamo.New(sess),
+		logger,
 		&repository.UserRepository{},
 	)
 
-	rr.MustRepository("UserRepository").List()
+	users, err := rr.MustRepository("UserRepository").List()
+	if err != nil {
+		logger.WithError(err).Fatal("an error has occurred")
+	}
+
+	fmt.Println(users)
 }

@@ -10,6 +10,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Configurer interface {
+	Configure(db *dynamo.DB, logger *logrus.Logger)
+}
+
 type Repository interface {
 	Configure(*dynamo.DB, *logrus.Logger)
 	List() (interface{}, error)
@@ -22,31 +26,6 @@ type Repository interface {
 type DynamoRepository struct {
 	db     *dynamo.DB
 	logger *logrus.Logger
-}
-
-func (r *DynamoRepository) List() (interface{}, error) {
-	r.logger.Panic("the following method must be implemented in the child struct")
-	return nil, nil
-}
-
-func (r *DynamoRepository) Get(id interface{}) (interface{}, error) {
-	r.logger.Panic("the following method must be implemented in the child struct")
-	return nil, nil
-}
-
-func (r *DynamoRepository) Create(entity interface{}) (interface{}, error) {
-	r.logger.Panic("the following method must be implemented in the child struct")
-	return false, nil
-}
-
-func (r *DynamoRepository) Update(id interface{}, entity interface{}) (bool, error) {
-	r.logger.Panic("the following method must be implemented in the child struct")
-	return false, nil
-}
-
-func (r *DynamoRepository) Delete(id interface{}) (bool, error) {
-	r.logger.Panic("the following method must be implemented in the child struct")
-	return false, nil
 }
 
 func (r *DynamoRepository) Configure(db *dynamo.DB, logger *logrus.Logger) {
@@ -63,8 +42,9 @@ type RepositoryRegistry struct {
 
 func NewRepositoryRegistry(db *dynamo.DB, logger *logrus.Logger, repository ...Repository) *RepositoryRegistry {
 	r := &RepositoryRegistry{
-		db:     db,
-		logger: logger,
+		db:       db,
+		logger:   logger,
+		registry: map[string]Repository{},
 	}
 
 	r.registerRepositories(repository)
@@ -73,8 +53,10 @@ func NewRepositoryRegistry(db *dynamo.DB, logger *logrus.Logger, repository ...R
 
 func (r *RepositoryRegistry) registerRepositories(repositories []Repository) {
 	for _, repository := range repositories {
+		repositoryName := reflect.TypeOf(repository).Elem().Name()
 		repository.Configure(r.db, r.logger)
-		r.registry[reflect.TypeOf(repository).String()] = repository
+		r.logger.WithField("repository", repositoryName).Debug("registering repository")
+		r.registry[repositoryName] = repository
 	}
 }
 
@@ -83,7 +65,7 @@ func (r *RepositoryRegistry) Repository(repositoryName string) (Repository, erro
 		return repository, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("Repository %s does not exist", repositoryName))
+	return nil, errors.New(fmt.Sprintf("repository %s does not exist", repositoryName))
 }
 
 func (r *RepositoryRegistry) MustRepository(repositoryName string) (repository Repository) {
